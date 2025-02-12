@@ -14,7 +14,7 @@ response = chat(
             'content': 'tell me about canada'
         }
     ],
-    model='smollm2:1.7b',
+    model='deepseek-r1:1.5b',
     format=Country.model_json_schema()
 )
 
