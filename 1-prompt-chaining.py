@@ -1,4 +1,4 @@
-from ollama import chat
+from ollama import chat, generate
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
@@ -104,7 +104,8 @@ def generate_confirmation(event_details: EventDetails) -> EventConfirmation:
         messages=[
             {
                 'role': 'system',
-                'content': 'Generate a natural language confirmation message for the event. Include the name, description, date, duration and the participants'
+                'content': '''Generate a natural language confirmation message for the event in a friendly tone. 
+                            Include the name, description, date, duration and the participants'''
             },
             {
                 'role': 'user',
@@ -112,19 +113,58 @@ def generate_confirmation(event_details: EventDetails) -> EventConfirmation:
             }
         ],
         model='deepseek-r1:1.5b',
-        format=EventConfirmation.model_json_schema()
+        format=EventConfirmation.model_json_schema(),
+        keep_alive='0m'
     )
 
     confirmation = EventConfirmation.model_validate_json(response.message.content)
     logger.info("Confirmation message generated successfully")
     return confirmation
 
+# Chaining prompts
+
+def proces_calender_request(user_input: str) -> Optional[EventConfirmation]:
+    """Chained LLM prompts with checks"""
+    logger.info("Processing calendar request")
+    logger.debug(f"Raw input: {user_input}")
+
+    # First LLM call: Validate request
+    validation = validate_event(user_input=user_input)
+
+    # Gate check: Verify for a calendar event with sufficient confidence
+    if (not validation.is_calender_event) or (validation.confidence_score < 0.7):
+        logger.warning(
+            f"Validation failed - is_calendar_event: {validation.is_calender_event}, confindence: {validation.confidence_score}"
+        )
+        return None
+    
+    logger.info("Validation passed. proceeding wit event processing")
+
+    # Second LLM call: Extract event information
+    event_details = extract_event_details(description=user_input)
+
+    # Third LLM call: Generate confirmation message
+    confirmation = generate_confirmation(event_details=event_details)
+
+    logger.info("Calendar request processing completed successfully")
+    return confirmation
+
 # Test
 
+# Valid input
+
 user_input = "Let's schedule a 1h team meeting next Tuesday at 2pm with Alice and Bob to discuss the project roadmap."
-response = validate_event(user_input=user_input)
-print(response)
-response = extract_event_details(description=user_input)
-print(response)
-response  = generate_confirmation(event_details=response)
-print(response)
+result = proces_calender_request(user_input=user_input)
+if result:
+    print(f"Confirmation: {result.confirmation_message}")
+else:
+    print("This doesn't appear to be a calendar event request.")
+
+# Invalid input 
+
+user_input = "Generate a poem about roses"
+result = proces_calender_request(user_input=user_input)
+if result:
+    print(f"Confirmation: {result.confirmation_message}")
+else:
+    print("This doesn't appear to be a calendar event request.")
