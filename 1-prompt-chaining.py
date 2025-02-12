@@ -54,7 +54,7 @@ def validate_event(user_input: str) -> EventValidation:
         messages=[
             {
                 'role': 'system', 
-                'content': f'{date_context} Analyze if the text describes a calender event and provide a confidence score between 0 and 1'
+                'content': f'''{date_context} Analyze if the text describes a calender event and provide a confidence score between 0 and 1 about the decision.'''
             },
             {
                 'role': 'user',
@@ -62,6 +62,7 @@ def validate_event(user_input: str) -> EventValidation:
             }
         ],
         model='deepseek-r1:1.5b',
+        options={'temperature': 0},
         format=EventValidation.model_json_schema()
     )
 
@@ -82,7 +83,7 @@ def extract_event_details(description: str) -> EventDetails:
         messages=[
             {
                 'role': 'system',
-                'content': f'{date_context} Extract detailed event information. When dates referece "next tuesday" or similar relative details, use today as reference'
+                'content': f'{date_context} Extract detailed event information. When dates referece "next tuesday" or similar relative details, use today as reference and calculate the date. Return response as JSON'
             },
             {
                 'role': 'user',
@@ -90,6 +91,7 @@ def extract_event_details(description: str) -> EventDetails:
             }
         ],
         model='deepseek-r1:1.5b',
+        options={'temperature': 0},
         format=EventDetails.model_json_schema()
     )
 
@@ -104,8 +106,8 @@ def generate_confirmation(event_details: EventDetails) -> EventConfirmation:
         messages=[
             {
                 'role': 'system',
-                'content': '''Generate a natural language confirmation message for the event in a friendly tone. 
-                            Include the name, description, date, duration and the participants'''
+                'content': '''Generate a natural language calendar event add confirmation message for the event in a friendly tone. Include meeting name,
+                            description, date and participants. Don't include any other information. Don't be creative.'''
             },
             {
                 'role': 'user',
@@ -113,6 +115,7 @@ def generate_confirmation(event_details: EventDetails) -> EventConfirmation:
             }
         ],
         model='deepseek-r1:1.5b',
+        options={'temperature': 0},
         format=EventConfirmation.model_json_schema(),
         keep_alive='0m'
     )
@@ -162,9 +165,9 @@ else:
 
 # Invalid input 
 
-user_input = "Generate a poem about roses"
-result = proces_calender_request(user_input=user_input)
-if result:
-    print(f"Confirmation: {result.confirmation_message}")
-else:
-    print("This doesn't appear to be a calendar event request.")
+# user_input = "Generate a poem about roses"
+# result = proces_calender_request(user_input=user_input)
+# if result:
+#     print(f"Confirmation: {result.confirmation_message}")
+# else:
+#     print("This doesn't appear to be a calendar event request.")
