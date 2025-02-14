@@ -67,6 +67,16 @@ class EntertainmentConfigChange(BaseModel):
         description='Requsted genre to be played'
     )
 
+class AssistantResponse(BaseModel):
+    """Final response format"""
+
+    status: str = Field(
+        description='Whether the configuration chage is successful'
+    )
+    message: str = Field(
+        description='User-friendly message'
+    )
+
 # Define routing and processing functions 
 
 def route_agent_request(user_input: str) -> AssistantRequestType:
@@ -94,3 +104,32 @@ def route_agent_request(user_input: str) -> AssistantRequestType:
     logger.info(f'Request routed as: {result.request_type} with confidence: {result.confidence_score}')
 
     return result
+
+def handle_light_config(description: str) -> LightConfigDetails:
+    """LLM call to handle light configuraion change"""
+    logger.info('Processing light configuraion change')
+
+    response = client.beta.chat.completions.parse(
+        messages=[
+            {
+                'role': 'system',
+                'content': 'Extract the details for light configuration change'
+            },
+            {
+                'role': 'user',
+                'content': description
+            }
+        ],
+        model=model,
+        temperature=0,
+        response_format=LightConfigDetails
+    )
+
+    result = response.choices[0].message.parsed
+    logger.info(f'Light configuraion: {result.model_dump_json(indent=2)}')
+
+    # Create response
+    return AssistantResponse(
+        status='success',
+        Message=f'Light configuration change on {result.place} to {result.light_type}'
+    )
