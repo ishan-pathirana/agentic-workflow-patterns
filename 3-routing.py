@@ -17,7 +17,7 @@ client = OpenAI(
     base_url='http://localhost:11434/v1',
     api_key='ollama'
 )
-model = 'deepseek-r1:1.5b'
+model = 'deepseek-r1:8b'
 
 # Define Data Models
 
@@ -57,7 +57,7 @@ class DoorConfigDetails(BaseModel):
         description='Action to be performed on the door lock'
     )
 
-class EntertainmentConfigChange(BaseModel):
+class EntertainmentConfigDetails(BaseModel):
     """Details of a entertainment system configuration change"""
 
     action: Literal['play', 'stop', 'pause'] = Field(
@@ -131,7 +131,7 @@ def handle_light_config(description: str) -> LightConfigDetails:
     # Create response
     return AssistantResponse(
         status='success',
-        Message=f'Light configuration change on {result.place} to {result.light_type}'
+        message=f'Light configuration change on {result.place} to {result.light_type}'
     )
 
 def handle_door_config(description: str) -> DoorConfigDetails:
@@ -162,3 +162,57 @@ def handle_door_config(description: str) -> DoorConfigDetails:
         status='success',
         Message=f'Door configuration change on {result.place} to {result.action}'
     )
+
+def handle_entertainment_config(description: str) -> EntertainmentConfigDetails:
+    """LLM call to handle entertainment configuraion change"""
+    logger.info('Processing entertainment configuraion change')
+
+    response = client.beta.chat.completions.parse(
+        messages=[
+            {
+                'role': 'system',
+                'content': 'Extract the details for entertainment configuration change'
+            },
+            {
+                'role': 'user',
+                'content': description
+            }
+        ],
+        model=model,
+        temperature=0,
+        response_format=EntertainmentConfigDetails
+    )
+
+    result = response.choices[0].message.parsed
+    logger.info(f'Entertainment configuraion: {result.model_dump_json(indent=2)}')
+
+    # Create response
+    return AssistantResponse(
+        status='success',
+        Message=f'Entertainment configuration change to {result.action} {f'{result.genre}' if result.genre else ""}'
+    )
+
+def process_assistant_request(user_input: str) -> Optional[AssistantResponse]:
+    """Main function implementing the routing workflow"""
+    logger.info('Processing assistant request')
+
+    # Route the request
+    route_result = route_agent_request(user_input=user_input)
+
+    # Check confidence threshold
+    if route_result.confidence_score < 0.7:
+        logger.warning(f'Low confidence score: {route_result.confidence_score}')
+        return None
+    
+    logger.info(f'{route_result.model_dump()}')
+    
+    # Route to appropriate handler
+    if route_result.request_type == 'light_config':
+        return handle_light_config(route_result.description)
+    elif route_result.request_type == 'door_config':
+        return handle_door_config(route_result.description)
+    elif route_result.request_type == 'entertainment_config':
+        return handle_entertainment_config(route_result.description)
+    else:
+        logger.warning("Request type is not supported")
+        return None
