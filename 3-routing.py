@@ -133,3 +133,32 @@ def handle_light_config(description: str) -> LightConfigDetails:
         status='success',
         Message=f'Light configuration change on {result.place} to {result.light_type}'
     )
+
+def handle_door_config(description: str) -> DoorConfigDetails:
+    """LLM call to handle door configuraion change"""
+    logger.info('Processing door configuraion change')
+
+    response = client.beta.chat.completions.parse(
+        messages=[
+            {
+                'role': 'system',
+                'content': 'Extract the details for door configuration change'
+            },
+            {
+                'role': 'user',
+                'content': description
+            }
+        ],
+        model=model,
+        temperature=0,
+        response_format=DoorConfigDetails
+    )
+
+    result = response.choices[0].message.parsed
+    logger.info(f'Door configuraion: {result.model_dump_json(indent=2)}')
+
+    # Create response
+    return AssistantResponse(
+        status='success',
+        Message=f'Door configuration change on {result.place} to {result.action}'
+    )
