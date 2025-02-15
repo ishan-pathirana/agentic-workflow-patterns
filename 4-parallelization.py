@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 import logging
 import os
+import asyncio
 import nest_asyncio
 
 nest_asyncio.apply()
@@ -90,3 +91,29 @@ async def check_security(user_input: str) -> SecurityCheck:
     )
 
     return response.choices[0].message.parsed
+
+# Main validation function
+
+async def validate_request(user_input: str) -> bool:
+    """Run validation checks in parallel"""
+    assistant_request_validation, security_check = await asyncio.gather(
+        validate_assistant_request(user_input=user_input),
+        check_security(user_input=user_input)
+    )
+
+    is_valid = (
+        assistant_request_validation.is_assistant_request
+        and assistant_request_validation.confidence_score > 0.7
+        and security_check.is_safe
+    )
+
+    if not is_valid:
+        logger.warning(
+            f"""Validation failed: Assistant Request={assistant_request_validation.is_assistant_request}, 
+            Security={security_check.is_safe}"""
+        )
+        if security_check.risk_flags:
+            logger.warning(f"Security flags: {security_check.risk_flags}")
+
+
+    return is_valid
