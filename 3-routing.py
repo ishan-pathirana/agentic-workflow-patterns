@@ -52,7 +52,7 @@ class DoorConfigDetails(BaseModel):
 
     place: str = Field(
         description='Place of the house where the door config change should be happened'
-    ),
+    )
     action: Literal['lock', 'unlock'] = Field(
         description='Action to be performed on the door lock'
     )
@@ -160,7 +160,7 @@ def handle_door_config(description: str) -> DoorConfigDetails:
     # Create response
     return AssistantResponse(
         status='success',
-        Message=f'Door configuration change on {result.place} to {result.action}'
+        message=f'Door configuration change on {result.place} to {result.action}'
     )
 
 def handle_entertainment_config(description: str) -> EntertainmentConfigDetails:
@@ -171,7 +171,7 @@ def handle_entertainment_config(description: str) -> EntertainmentConfigDetails:
         messages=[
             {
                 'role': 'system',
-                'content': 'Extract the details for entertainment configuration change'
+                'content': 'Extract the details for entertainment configuration change.'
             },
             {
                 'role': 'user',
@@ -189,7 +189,7 @@ def handle_entertainment_config(description: str) -> EntertainmentConfigDetails:
     # Create response
     return AssistantResponse(
         status='success',
-        Message=f'Entertainment configuration change to {result.action} {f'{result.genre}' if result.genre else ""}'
+        message=f'Entertainment configuration change to {result.action} {f'{result.genre}' if result.genre else ""}'
     )
 
 def process_assistant_request(user_input: str) -> Optional[AssistantResponse]:
@@ -204,8 +204,6 @@ def process_assistant_request(user_input: str) -> Optional[AssistantResponse]:
         logger.warning(f'Low confidence score: {route_result.confidence_score}')
         return None
     
-    logger.info(f'{route_result.model_dump()}')
-    
     # Route to appropriate handler
     if route_result.request_type == 'light_config':
         return handle_light_config(route_result.description)
@@ -216,3 +214,23 @@ def process_assistant_request(user_input: str) -> Optional[AssistantResponse]:
     else:
         logger.warning("Request type is not supported")
         return None
+    
+# Testing
+
+# Test with light configuration change request
+user_input = 'Change bedroom light to cool'
+result = process_assistant_request(user_input=user_input)
+if result:
+    print(f'Response: {result.message}')
+
+# Test with door configuration change request
+user_input = 'lock the front door'
+result = process_assistant_request(user_input=user_input)
+if result:
+    print(f'Response: {result.message}')
+
+# Test with entertainment configuration change request
+user_input = 'play some jazz'
+result = process_assistant_request(user_input=user_input)
+if result:
+    print(f'Response: {result.message}')
